@@ -216,18 +216,38 @@ def main():
         api_key = get_api_key()
         
         if not api_key:
-            st.warning("No API key detected")
+            st.error("⚠️ **No API key detected**")
+            st.markdown("**For better visual search results:**")
+            
+            with st.expander("🌐 **Streamlit Cloud Setup** (Recommended)", expanded=True):
+                st.markdown("""
+                1. Click the **⚙️ icon** (app settings)
+                2. Go to **"Secrets"** tab
+                3. Add: `ANTHROPIC_API_KEY = "your-key"`
+                4. **Save** (app will restart)
+                """)
+            
+            with st.expander("💻 **Local Development**"):
+                st.markdown("""
+                Create `.env` file:
+                ```
+                ANTHROPIC_API_KEY=your-key-here
+                ```
+                """)
+            
+            st.markdown("**Or enter temporarily:**")
             user_key = st.text_input(
-                "Enter Anthropic API Key",
+                "Anthropic API Key",
                 type="password",
-                help="Required for enhanced visual descriptions"
+                help="Temporary - not saved between sessions"
             )
             if user_key:
                 st.session_state.api_key = user_key
                 api_key = user_key
                 st.rerun()
         else:
-            st.success("✅ API key configured")
+            st.success("✅ **Enhanced Search Mode Active**")
+            st.markdown("🚀 Using OCR + AI Vision Descriptions")
             if st.button("Clear API Key"):
                 st.session_state.api_key = None
                 st.rerun()
@@ -388,9 +408,27 @@ def main():
             
             # Perform search
             if search_query:
+                # Make the search query highly visible
+                st.markdown("---")
+                st.markdown(f"### 🔍 **Searching for:** \"{search_query}\"")
+                
+                # Show search mode status
+                api_key = get_api_key()
+                if api_key:
+                    st.success("🚀 **Enhanced Search Mode** - Using OCR + AI Vision Descriptions")
+                else:
+                    st.warning("⚠️ **Basic Search Mode** - Using OCR Only (Add API key for better visual search)")
+                
                 with st.spinner("Searching..."):
                     results = st.session_state.search_engine.search(search_query, top_k=5)
-                    display_search_results(results)
+                    
+                # Show search stats
+                if results:
+                    st.info(f"📊 Found **{len(results)}** results (sorted by relevance)")
+                else:
+                    st.error("😔 No results found. Try a different search term or process more images.")
+                
+                display_search_results(results)
     
     with tab3:
         st.header("📚 How to Use")
@@ -398,11 +436,22 @@ def main():
         st.markdown("""
         ### Getting Started
         
-        1. **Configure API Key** (Optional but recommended)
-           - **Option 1**: Create `.env` file with `ANTHROPIC_API_KEY=your-key`
-           - **Option 2**: Set environment variable: `export ANTHROPIC_API_KEY="your-key"`
-           - **Option 3**: Add API key in sidebar for enhanced visual descriptions
-           - Without API key, the tool will use OCR-only mode
+        1. **Configure API Key** (Optional but recommended for better results)
+           
+           **🌐 For Streamlit Cloud (Recommended):**
+           - Go to your app settings (⚙️ icon in Streamlit Cloud)
+           - Click **"Secrets"** 
+           - Add: `ANTHROPIC_API_KEY = "your-actual-api-key-here"`
+           - Save and the app will restart with enhanced search
+           
+           **💻 For Local Development:**
+           - **Option A**: Create `.env` file with `ANTHROPIC_API_KEY=your-key`
+           - **Option B**: Set environment variable: `export ANTHROPIC_API_KEY="your-key"`
+           - **Option C**: Add API key in sidebar (not recommended for production)
+           
+           **🔍 Search Modes:**
+           - **With API Key**: OCR + AI Visual Descriptions (much better for visual queries)
+           - **Without API Key**: OCR text only (basic mode)
         
         2. **Add Screenshots** (Choose any method)
            - **Demo**: Click "Load Sample Screenshots" for demo data
