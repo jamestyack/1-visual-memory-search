@@ -61,6 +61,10 @@ def init_session_state():
         st.session_state.api_key = None
     if 'total_processing_time' not in st.session_state:
         st.session_state.total_processing_time = 0
+    if 'sample_loaded' not in st.session_state:
+        st.session_state.sample_loaded = False
+    if 'processing_in_progress' not in st.session_state:
+        st.session_state.processing_in_progress = False
 
 
 def get_api_key() -> Optional[str]:
@@ -308,30 +312,39 @@ def main():
         button_col1, button_col2, button_col3 = st.columns(3)
         
         with button_col1:
-            if st.button("📁 Load Sample Screenshots", type="primary"):
-                # Ensure processor is initialized
-                api_key = get_api_key()
-                if st.session_state.processor is None or \
-                   (api_key and st.session_state.processor.api_key != api_key):
-                    st.session_state.processor = ScreenshotProcessor(api_key)
-                
-                sample_files = load_sample_screenshots()
-                if sample_files:
-                    with st.spinner(f"Processing {len(sample_files)} sample images..."):
-                        start_time = time.time()
-                        processed = process_images(sample_files, st.session_state.processor)
-                        
-                        # Index in search engine
-                        indexed = st.session_state.search_engine.index_batch(processed)
-                        
-                        # Update session state
-                        st.session_state.processed_images.extend(processed)
-                        st.session_state.total_processing_time += time.time() - start_time
-                        
-                        st.success(f"✅ Processed and indexed {indexed} sample images!")
-                        st.rerun()  # Force refresh to show results immediately
-                else:
-                    st.error("No sample screenshots found in repository")
+            # Check if samples are already loaded
+            if st.session_state.sample_loaded:
+                st.info("✅ Sample screenshots already loaded!")
+                if st.button("🔄 Reload Sample Screenshots", type="secondary"):
+                    st.session_state.sample_loaded = False
+                    st.session_state.processing_in_progress = False
+                    st.rerun()
+            else:
+                if st.button("📁 Load Sample Screenshots", type="primary"):
+                    # Ensure processor is initialized
+                    api_key = get_api_key()
+                    if st.session_state.processor is None or \
+                       (api_key and st.session_state.processor.api_key != api_key):
+                        st.session_state.processor = ScreenshotProcessor(api_key)
+                    
+                    sample_files = load_sample_screenshots()
+                    if sample_files:
+                        with st.spinner(f"Processing {len(sample_files)} sample images..."):
+                            start_time = time.time()
+                            processed = process_images(sample_files, st.session_state.processor)
+                            
+                            # Index in search engine
+                            indexed = st.session_state.search_engine.index_batch(processed)
+                            
+                            # Update session state
+                            st.session_state.processed_images.extend(processed)
+                            st.session_state.total_processing_time += time.time() - start_time
+                            st.session_state.sample_loaded = True
+                            
+                            st.success(f"✅ Processed and indexed {indexed} sample images!")
+                            st.rerun()  # Force refresh to show results immediately
+                    else:
+                        st.error("No sample screenshots found in repository")
         
         with button_col2:
             if uploaded_files and st.button("🚀 Process Uploaded Files", type="primary"):
