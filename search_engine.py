@@ -4,9 +4,18 @@ Uses sentence-transformers and ChromaDB for efficient similarity search.
 """
 
 import os
+import sys
 from typing import List, Dict, Tuple, Optional
 import numpy as np
 from sentence_transformers import SentenceTransformer
+
+# Fix for Streamlit Cloud SQLite issue
+try:
+    import pysqlite3
+    sys.modules['sqlite3'] = pysqlite3
+except ImportError:
+    pass
+
 import chromadb
 from chromadb.config import Settings
 import hashlib
@@ -26,10 +35,19 @@ class SearchEngine:
         self.model = SentenceTransformer(model_name)
         
         # Initialize ChromaDB client (in-memory for Streamlit Cloud)
-        self.client = chromadb.Client(Settings(
-            is_persistent=False,
-            anonymized_telemetry=False
-        ))
+        try:
+            self.client = chromadb.Client(Settings(
+                is_persistent=False,
+                anonymized_telemetry=False
+            ))
+        except Exception as e:
+            # Fallback for SQLite issues on some cloud platforms
+            print(f"ChromaDB initialization warning: {e}")
+            self.client = chromadb.Client(Settings(
+                is_persistent=False,
+                anonymized_telemetry=False,
+                allow_reset=True
+            ))
         
         # Create or get collection
         self.collection = self.client.get_or_create_collection(
