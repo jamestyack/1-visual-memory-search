@@ -16,6 +16,10 @@ try:
 except ImportError:
     pass
 
+# Fix for PyTorch meta tensor issues
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:128'
+os.environ['TORCH_SHOW_CPP_STACKTRACES'] = '1'
+
 import chromadb
 from chromadb.config import Settings
 import hashlib
@@ -31,23 +35,34 @@ class SearchEngine:
         Args:
             model_name: Name of the sentence-transformer model to use
         """
-        # Initialize embedding model
-        self.model = SentenceTransformer(model_name)
+        # Store model name for lazy loading
+        self.model_name = model_name
+        self.model = None
         
         # Initialize ChromaDB client (in-memory for Streamlit Cloud)
         try:
-            self.client = chromadb.Client(Settings(
-                is_persistent=False,
-                anonymized_telemetry=False
-            ))
+            # Try basic ephemeral client first
+            self.client = chromadb.EphemeralClient()
+            print("✅ ChromaDB initialized with EphemeralClient")
         except Exception as e:
-            # Fallback for SQLite issues on some cloud platforms
-            print(f"ChromaDB initialization warning: {e}")
-            self.client = chromadb.Client(Settings(
-                is_persistent=False,
-                anonymized_telemetry=False,
-                allow_reset=True
-            ))
+            print(f"EphemeralClient failed: {e}")
+            try:
+                # Fallback to Client with basic settings
+                self.client = chromadb.Client(Settings(
+                    is_persistent=False,
+                    anonymized_telemetry=False,
+                    allow_reset=True
+                ))
+                print("✅ ChromaDB initialized with Client + settings")
+            except Exception as e2:
+                print(f"ChromaDB Client failed: {e2}")
+                try:
+                    # Last resort - try with minimal settings
+                    self.client = chromadb.Client()
+                    print("✅ ChromaDB initialized with default Client")
+                except Exception as e3:
+                    print(f"❌ All ChromaDB initialization methods failed: {e3}")
+                    raise e3
         
         # Create or get collection
         self.collection = self.client.get_or_create_collection(
@@ -58,6 +73,32 @@ class SearchEngine:
         # Track indexed documents
         self.indexed_docs = {}
         self.doc_count = 0
+    
+    def _ensure_model_loaded(self):
+        """Lazy load the sentence transformer model to avoid initialization issues."""
+        if self.model is None:
+            try:
+                print(f"Loading sentence transformer model: {self.model_name}")
+                # Try to initialize with CPU device explicitly to avoid meta tensor issues
+                self.model = SentenceTransformer(self.model_name, device='cpu')
+                print("✅ Model loaded successfully with CPU device")
+            except Exception as e:
+                print(f"Failed to initialize with CPU device, trying default: {e}")
+                try:
+                    # Fallback to default initialization
+                    import torch
+                    torch.set_default_device('cpu')
+                    self.model = SentenceTransformer(self.model_name)
+                    print("✅ Model loaded successfully with default settings")
+                except Exception as e2:
+                    print(f"Model initialization failed: {e2}")
+                    try:
+                        # Last resort - try with trust_remote_code
+                        self.model = SentenceTransformer(self.model_name, trust_remote_code=True, device='cpu')
+                        print("✅ Model loaded successfully with trust_remote_code")
+                    except Exception as e3:
+                        print(f"❌ All model initialization attempts failed: {e3}")
+                        raise e3
     
     def _generate_doc_id(self, path: str) -> str:
         """Generate unique document ID from file path."""
@@ -84,6 +125,9 @@ class SearchEngine:
             # Skip if already indexed
             if doc_id in self.indexed_docs:
                 return True
+            
+            # Ensure model is loaded
+            self._ensure_model_loaded()
             
             # Generate embedding
             embedding = self.model.encode(document['combined_text']).tolist()
@@ -133,6 +177,9 @@ class SearchEngine:
         
         if not valid_docs:
             return 0
+        
+        # Ensure model is loaded
+        self._ensure_model_loaded()
         
         # Prepare batch data
         ids = []
@@ -194,6 +241,9 @@ class SearchEngine:
             if self.doc_count == 0:
                 return []
             
+            # Ensure model is loaded
+            self._ensure_model_loaded()
+            
             # Generate query embedding
             query_embedding = self.model.encode(query).tolist()
             
@@ -238,9 +288,19 @@ class SearchEngine:
         Returns:
             Dictionary with engine statistics
         """
-        return {
+        stats = {
             'total_documents': self.doc_count,
-            'model_name': self.model.get_sentence_embedding_dimension(),
-            'embedding_dimension': self.model.get_sentence_embedding_dimension(),
+            'model_name': self.model_name,
             'indexed_files': list(self.indexed_docs.keys())
         }
+        
+        # Only add embedding dimension if model is loaded
+        if self.model is not None:
+            try:
+                stats['embedding_dimension'] = self.model.get_sentence_embedding_dimension()
+            except:
+                stats['embedding_dimension'] = 'Unknown (model not loaded)'
+        else:
+            stats['embedding_dimension'] = 'Not loaded yet'
+            
+        return stats
