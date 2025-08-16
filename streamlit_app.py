@@ -309,6 +309,12 @@ def main():
         
         with button_col1:
             if st.button("📁 Load Sample Screenshots", type="primary"):
+                # Ensure processor is initialized
+                api_key = get_api_key()
+                if st.session_state.processor is None or \
+                   (api_key and st.session_state.processor.api_key != api_key):
+                    st.session_state.processor = ScreenshotProcessor(api_key)
+                
                 sample_files = load_sample_screenshots()
                 if sample_files:
                     with st.spinner(f"Processing {len(sample_files)} sample images..."):
@@ -323,11 +329,18 @@ def main():
                         st.session_state.total_processing_time += time.time() - start_time
                         
                         st.success(f"✅ Processed and indexed {indexed} sample images!")
+                        st.rerun()  # Force refresh to show results immediately
                 else:
                     st.error("No sample screenshots found in repository")
         
         with button_col2:
             if uploaded_files and st.button("🚀 Process Uploaded Files", type="primary"):
+                # Ensure processor is initialized
+                api_key = get_api_key()
+                if st.session_state.processor is None or \
+                   (api_key and st.session_state.processor.api_key != api_key):
+                    st.session_state.processor = ScreenshotProcessor(api_key)
+                
                 with st.spinner(f"Processing {len(uploaded_files)} images..."):
                     start_time = time.time()
                     processed = process_images(uploaded_files, st.session_state.processor)
@@ -340,9 +353,16 @@ def main():
                     st.session_state.total_processing_time += time.time() - start_time
                     
                     st.success(f"✅ Processed and indexed {indexed} images!")
+                    st.rerun()  # Force refresh to show results immediately
         
         with button_col3:
             if folder_path and st.button("📂 Process Folder", type="primary"):
+                # Ensure processor is initialized
+                api_key = get_api_key()
+                if st.session_state.processor is None or \
+                   (api_key and st.session_state.processor.api_key != api_key):
+                    st.session_state.processor = ScreenshotProcessor(api_key)
+                
                 folder_files = load_folder_screenshots(folder_path)
                 if folder_files:
                     with st.spinner(f"Processing {len(folder_files)} images from folder..."):
@@ -357,6 +377,7 @@ def main():
                         st.session_state.total_processing_time += time.time() - start_time
                         
                         st.success(f"✅ Processed and indexed {indexed} images from folder!")
+                        st.rerun()  # Force refresh to show results immediately
                 else:
                     st.error(f"No screenshots found in folder: {folder_path}")
         
