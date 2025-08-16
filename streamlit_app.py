@@ -186,7 +186,7 @@ def display_search_results(results: List):
                 # Display image thumbnail
                 for img_data in st.session_state.processed_images:
                     if img_data['path'] == metadata['path']:
-                        st.image(img_data['image'], use_container_width=True)
+                        st.image(img_data['image'], use_column_width=True)
                         break
                 
                 # Show text previews in expander
@@ -349,7 +349,7 @@ def main():
             for idx, img_data in enumerate(st.session_state.processed_images):
                 col = cols[idx % 4]
                 with col:
-                    st.image(img_data['image'], caption=img_data['filename'], use_container_width=True)
+                    st.image(img_data['image'], caption=img_data['filename'], use_column_width=True)
     
     with tab2:
         st.header("Search Your Screenshots")
