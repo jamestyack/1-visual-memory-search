@@ -97,6 +97,20 @@ def load_sample_screenshots():
     return []
 
 
+def load_folder_screenshots(folder_path: str):
+    """Load screenshots from a specified folder."""
+    if not os.path.exists(folder_path):
+        return []
+    
+    screenshot_files = []
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            if file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
+                screenshot_files.append(os.path.join(root, file))
+    
+    return screenshot_files
+
+
 def process_images(image_files: List, processor: ScreenshotProcessor) -> List:
     """Process uploaded or sample images."""
     processed = []
@@ -243,17 +257,30 @@ def main():
     with tab1:
         st.header("Upload Screenshots")
         
-        # File upload
-        uploaded_files = st.file_uploader(
-            "Choose screenshot files",
-            type=['png', 'jpg', 'jpeg', 'gif', 'bmp'],
-            accept_multiple_files=True,
-            help="Upload multiple screenshots to index for searching"
-        )
-        
-        col1, col2 = st.columns(2)
+        # Create three columns for different input methods
+        col1, col2, col3 = st.columns(3)
         
         with col1:
+            # File upload
+            uploaded_files = st.file_uploader(
+                "Choose screenshot files",
+                type=['png', '.jpg', 'jpeg', 'gif', 'bmp'],
+                accept_multiple_files=True,
+                help="Upload multiple screenshots to index for searching"
+            )
+        
+        with col2:
+            # Folder input
+            folder_path = st.text_input(
+                "Or enter folder path",
+                placeholder="/path/to/screenshots/folder",
+                help="Enter the full path to a folder containing screenshots"
+            )
+        
+        # Processing buttons
+        button_col1, button_col2, button_col3 = st.columns(3)
+        
+        with button_col1:
             if st.button("📁 Load Sample Screenshots", type="primary"):
                 sample_files = load_sample_screenshots()
                 if sample_files:
@@ -272,7 +299,7 @@ def main():
                 else:
                     st.error("No sample screenshots found in repository")
         
-        with col2:
+        with button_col2:
             if uploaded_files and st.button("🚀 Process Uploaded Files", type="primary"):
                 with st.spinner(f"Processing {len(uploaded_files)} images..."):
                     start_time = time.time()
@@ -286,6 +313,25 @@ def main():
                     st.session_state.total_processing_time += time.time() - start_time
                     
                     st.success(f"✅ Processed and indexed {indexed} images!")
+        
+        with button_col3:
+            if folder_path and st.button("📂 Process Folder", type="primary"):
+                folder_files = load_folder_screenshots(folder_path)
+                if folder_files:
+                    with st.spinner(f"Processing {len(folder_files)} images from folder..."):
+                        start_time = time.time()
+                        processed = process_images(folder_files, st.session_state.processor)
+                        
+                        # Index in search engine
+                        indexed = st.session_state.search_engine.index_batch(processed)
+                        
+                        # Update session state
+                        st.session_state.processed_images.extend(processed)
+                        st.session_state.total_processing_time += time.time() - start_time
+                        
+                        st.success(f"✅ Processed and indexed {indexed} images from folder!")
+                else:
+                    st.error(f"No screenshots found in folder: {folder_path}")
         
         # Display processed images
         if st.session_state.processed_images:
@@ -346,12 +392,14 @@ def main():
         ### Getting Started
         
         1. **Configure API Key** (Optional but recommended)
-           - Add your Anthropic API key in the sidebar for enhanced visual descriptions
+           - Set environment variable: `export ANTHROPIC_API_KEY="your-key"`
+           - Or add API key in sidebar for enhanced visual descriptions
            - Without API key, the tool will use OCR-only mode
         
-        2. **Upload Screenshots**
-           - Click "Load Sample Screenshots" for demo data
-           - Or upload your own screenshots using the file uploader
+        2. **Add Screenshots** (Choose any method)
+           - **Demo**: Click "Load Sample Screenshots" for demo data
+           - **Individual Files**: Use the file uploader for specific images
+           - **Folder Processing**: Enter a folder path to process entire directories
            - Supports PNG, JPG, JPEG, GIF, and BMP formats
         
         3. **Search Your Images**
