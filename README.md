@@ -4,7 +4,7 @@ A fast visual memory search tool that indexes screenshots and enables natural la
 
 ## Live Demo
 
-**Deployment URL**: https://1-visual-memory-search.streamlit.app
+**Deployment URL**: https://1-visual-memory-search-i4ukj4iere2tw2zvqrkegy.streamlit.app/
 
 ## Features
 
