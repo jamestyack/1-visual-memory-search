@@ -1,0 +1,5 @@
+# Copy this file to .env and add your API key
+# The .env file is gitignored and will not be committed
+
+# Anthropic API key for Claude 3 Haiku vision descriptions
+ANTHROPIC_API_KEY=your-anthropic-api-key-here

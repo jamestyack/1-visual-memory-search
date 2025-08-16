@@ -13,6 +13,13 @@ from typing import List, Optional
 from processor import ScreenshotProcessor
 from search_engine import SearchEngine
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv not available, skip
+
 
 # Page configuration
 st.set_page_config(
@@ -392,8 +399,9 @@ def main():
         ### Getting Started
         
         1. **Configure API Key** (Optional but recommended)
-           - Set environment variable: `export ANTHROPIC_API_KEY="your-key"`
-           - Or add API key in sidebar for enhanced visual descriptions
+           - **Option 1**: Create `.env` file with `ANTHROPIC_API_KEY=your-key`
+           - **Option 2**: Set environment variable: `export ANTHROPIC_API_KEY="your-key"`
+           - **Option 3**: Add API key in sidebar for enhanced visual descriptions
            - Without API key, the tool will use OCR-only mode
         
         2. **Add Screenshots** (Choose any method)
